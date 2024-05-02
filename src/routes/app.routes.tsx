@@ -9,7 +9,7 @@ type AppRoutes = {
   home: undefined;
 };
 
-export type AuthNavigatorRoutesProps = NativeStackNavigationProp<AppRoutes>;
+export type AppNavigatorRoutesProps = NativeStackNavigationProp<AppRoutes>;
 
 const { Navigator, Screen } = createNativeStackNavigator<AppRoutes>();
 

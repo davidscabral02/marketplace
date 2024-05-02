@@ -3,17 +3,17 @@ import { extendTheme } from 'native-base';
 export const THEME = extendTheme({
   colors: {
     blue: {
-      500: '#647AC7 ',
-      700: '#364D9D',
+      700: '#647AC7',
+      500: '#364D9D',
     },
     gray: {
-      100: '#F7F7F8',
-      200: '#EDECEE',
-      300: '#D9D8DA',
+      700: '#F7F7F8',
+      600: '#EDECEE',
+      500: '#D9D8DA',
       400: '#9F9BA1',
-      500: '#5F5B62',
-      600: '#3E3A40',
-      700: '#1A181B',
+      300: '#5F5B62',
+      200: '#3E3A40',
+      100: '#1A181B',
     },
     white: '#FFFFFF',
     red: {
@@ -28,11 +28,12 @@ export const THEME = extendTheme({
     xs: 12,
     sm: 14,
     md: 16,
-    lg: 18,
-    xl: 20,
+    lg: 20,
+    xl: 24,
   },
   sizes: {
     14: 56,
+    28: 112,
     33: 148,
   },
 });

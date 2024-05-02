@@ -8,10 +8,10 @@ export const Routes = () => {
   const { colors } = useTheme();
 
   const theme = DefaultTheme;
-  theme.colors.background = colors.gray[200];
+  theme.colors.background = colors.gray[600];
 
   return (
-    <Box flex={1} bg="gray.700">
+    <Box flex={1} bg="gray.100">
       <NavigationContainer>
         {true ? <AuthRouter /> : <AppRouter />}
       </NavigationContainer>
