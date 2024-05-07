@@ -30,11 +30,15 @@ import { PencilLine } from 'phosphor-react-native';
 import { ImageSourcePropType, Platform } from 'react-native';
 import { useState } from 'react';
 import { UserPhoto } from '@components/UserPhoto';
+import { phoneMask, phoneUnmask } from '@utils/PhoneMask';
+import { api } from '@services/api';
+import { AppError } from '@utils/AppError';
+import axios from 'axios';
 
 type FormDataProps = {
+  tel: string;
   name: string;
   email: string;
-  phone: string;
   avatar: string;
   password: string;
   passwordConfirm: string;
@@ -43,7 +47,10 @@ type FormDataProps = {
 const signInSchema = yup.object({
   name: yup.string().required('Informe o nome.'),
   email: yup.string().required('Informe o e-mail.').email('E-mail inválido.'),
-  phone: yup.string().required('Informe o número de telefone.'),
+  tel: yup
+    .string()
+    .required('Informe o número de telefone.')
+    .min(13, 'O número deve seguir o formato +00 (00) 00000-0000'),
   avatar: yup.string().required('O avatar é obrigatório.'),
   password: yup
     .string()
@@ -67,21 +74,72 @@ export const SignUp = () => {
     formState: { errors },
   } = useForm<FormDataProps>({
     resolver: yupResolver(signInSchema),
-    defaultValues: { avatar: DefaultUserPhoto },
+    defaultValues: { tel: '' },
   });
 
+  const [isLoading, setIsLoading] = useState(false);
   const [photoIsLoading, setPhotoIsLoading] = useState(false);
-  const [photo, setPhoto] = useState<string | null>();
+  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset>();
 
-  const handleSingUp = ({
+  const handleSingUp = async ({
+    tel,
     name,
     email,
-    phone,
     avatar,
     password,
-    passwordConfirm,
   }: FormDataProps) => {
-    console.log(avatar, email, name, phone, password, passwordConfirm);
+    setIsLoading(true);
+    try {
+      const phone = phoneUnmask(tel);
+      const fileExtension = avatar.split('.').pop();
+
+      // const photoFile = {
+      //   uri: photo?.uri,
+      //   name: `${name}.${fileExtension}`,
+      //   type: `${photo?.type}/${fileExtension}`,
+      // };
+      const photoFile = {
+        // uri: photo?.uri,
+        type: `${photo?.type}/${fileExtension}`,
+        avatar: `@${name}.${fileExtension}`.toLowerCase(),
+      };
+      const userPhotoUploadForm = new FormData();
+
+      userPhotoUploadForm.append('avatar', avatar as unknown as Blob);
+      userPhotoUploadForm.append('name', name);
+      userPhotoUploadForm.append('email', email);
+      userPhotoUploadForm.append('tel', tel);
+      userPhotoUploadForm.append('password', password);
+
+      await api.post(
+        '/users/',
+        {
+          avatar: photoFile,
+          name,
+          email,
+          tel: phone,
+          password,
+        },
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+      const title = isAppError
+        ? error.message
+        : 'Não foi possível criar a conta. Tente novamente mais tarde';
+
+      toast.show({
+        title,
+        placement: 'top',
+        bgColor: 'red.500',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   async function handleUserPhotoSelect() {
@@ -108,44 +166,21 @@ export const SignUp = () => {
           photoInfo.size / 1024 / 1024 > 5
         ) {
           return toast.show({
-            title: 'Essa imagem é muito grande. Escolha uma imagem de até 5mb',
             placement: 'top',
             bgColor: 'red.500',
+            title: 'Essa imagem é muito grande. Escolha uma imagem de até 5mb',
           });
         }
-
-        setPhoto(photoSelected.assets[0].uri);
-
-        // const fileExtension = photoSelected.assets[0].uri.split('.').pop();
-
-        // const photoFile = {
-        //   uri: photoSelected.assets[0].uri,
-        //   type: `${photoSelected.assets[0].type}/${fileExtension}`,
-        //   name: `${user.name}.${fileExtension}`.toLowerCase(),
-        // };
-
-        // const userPhotoUploadForm = new FormData();
-        // userPhotoUploadForm.append('avatar', photoFile as unknown as Blob);
-
-        // const avatarUpdatedResponse = await api.patch(
-        //   '/users/avatar',
-        //   userPhotoUploadForm,
-        //   {
-        //     headers: {
-        //       'Content-Type': 'multipart/form-data',
-        //     },
-        //   }
-        // );
-
-        // const userAvatarUpdated = user;
-        // userAvatarUpdated.avatar = avatarUpdatedResponse.data.avatar;
-        // updateUserProfile(userAvatarUpdated);
 
         toast.show({
           bg: 'green.500',
           placement: 'top',
-          title: 'Foto atualizada com sucesso!',
+          title: 'Foto selecionada com sucesso!',
         });
+
+        setPhoto(photoSelected.assets[0]);
+
+        return photoSelected.assets[0].uri;
       }
     } catch (error) {
       console.log(error);
@@ -164,7 +199,7 @@ export const SignUp = () => {
         contentContainerStyle={{ flexGrow: 1 }}
       >
         <Box flex={1} justifyContent="center">
-          <Center px={8} mt={12}>
+          <Center px={8} mt={4}>
             <Logo height={80} width={80} />
             <Heading mb={2} color="gray.100" fontSize="lg" fontFamily="heading">
               Boas-vindas!
@@ -176,39 +211,53 @@ export const SignUp = () => {
           </Center>
 
           <Center w="full" px={8}>
-            <VStack mt={6} mb={8}>
-              <Controller
-                name="avatar"
-                control={control}
-                render={({ field: { value, onChange } }) => (
-                  <UserPhoto
-                    border={3}
-                    size={PHOTO_SIZE}
-                    alt="Foto de perfil"
-                    borderColor={colors.blue[700]}
-                    errorMessage={errors.avatar?.message}
-                    source={
-                      !!photo ? { uri: photo } : (value as ImageSourcePropType)
-                    }
-                  />
-                )}
-              />
-              <Pressable
-                h={12}
-                w={12}
-                ml={16}
-                mt={16}
-                zIndex={1}
-                bg="blue.700"
-                rounded="full"
-                position="absolute"
-                alignItems="center"
-                justifyContent="center"
-                onPress={handleUserPhotoSelect}
-              >
-                <PencilLine color={colors.white} size={20} />
-              </Pressable>
-            </VStack>
+            <Controller
+              name="avatar"
+              control={control}
+              render={({ field: { onChange } }) => (
+                <VStack mt={6} mb={8}>
+                  {photoIsLoading ? (
+                    <Skeleton
+                      w={PHOTO_SIZE}
+                      h={PHOTO_SIZE}
+                      rounded="full"
+                      borderWidth={3}
+                      endColor="gray.400"
+                      startColor="gray.500"
+                      borderColor={colors.blue[700]}
+                    />
+                  ) : (
+                    <UserPhoto
+                      border={3}
+                      size={PHOTO_SIZE}
+                      alt="Foto de perfil"
+                      borderColor={colors.blue[700]}
+                      errorMessage={errors.avatar?.message as string}
+                      source={
+                        !!photo?.uri ? { uri: photo.uri } : DefaultUserPhoto
+                      }
+                    />
+                  )}
+                  <Pressable
+                    h={12}
+                    w={12}
+                    ml={16}
+                    mt={16}
+                    zIndex={1}
+                    bg="blue.700"
+                    rounded="full"
+                    position="absolute"
+                    alignItems="center"
+                    justifyContent="center"
+                    onPress={async () => {
+                      onChange(await handleUserPhotoSelect());
+                    }}
+                  >
+                    <PencilLine color={colors.white} size={20} />
+                  </Pressable>
+                </VStack>
+              )}
+            />
 
             <Controller
               name="name"
@@ -236,14 +285,15 @@ export const SignUp = () => {
               )}
             />
             <Controller
-              name="phone"
+              name="tel"
               control={control}
-              render={({ field: { onChange } }) => (
+              render={({ field: { value, onChange } }) => (
                 <Input
                   placeholder="Telefone"
                   onChangeText={onChange}
+                  value={phoneMask(value)}
                   keyboardType="phone-pad"
-                  errorMessage={errors.phone?.message}
+                  errorMessage={errors.tel?.message}
                 />
               )}
             />
@@ -277,6 +327,7 @@ export const SignUp = () => {
               mt={4}
               title="Criar"
               variant="black"
+              isLoading={isLoading}
               onPress={handleSubmit(handleSingUp)}
             />
           </Center>

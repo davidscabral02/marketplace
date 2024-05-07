@@ -1,9 +1,13 @@
-import { Center, Text } from 'native-base';
+import { VStack } from 'native-base';
+
+import { HomeHeader } from '@components/HomeHeader';
+import { MySalesCard } from '@components/MySalesCard';
 
 export const Home = () => {
   return (
-    <Center flex={1}>
-      <Text>Home</Text>
-    </Center>
+    <VStack flex={1}>
+      <HomeHeader />
+      <MySalesCard />
+    </VStack>
   );
 };
